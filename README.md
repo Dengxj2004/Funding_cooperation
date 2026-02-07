@@ -1,0 +1,92 @@
+# Funding Cooperation 分析脚本（全量重跑版）
+
+该版本不再使用断点续跑。
+
+## 运行
+
+```bash
+python analysis_pipeline.py \
+  --file1 /data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv \
+  --file2 /data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv \
+  --out_dir ./output_funding_analysis \
+  --n_jobs 0
+```
+
+- `--n_jobs 0` 表示自动使用 `CPU核数-1` 并行处理地址/作者解析，以加速大文件运行。
+
+## 本次关键修正
+
+- **全量重跑**：不再依赖中间断点文件。
+- **双文件合并**：自动识别分隔符，兼容 `.tsv` + `.csv`，确保 2022/2023 数据并入。
+- **美国归并**：`USA / United States / U.S.A` 等归并为 `usa`，避免 Top 国家漏计。
+- **Gephi 导出**：输出国家网络与机构网络点边表至 `output_funding_analysis/gephi/`。
+
+## 输出目录
+
+- `output_funding_analysis/metrics/`：指标 CSV
+- `output_funding_analysis/figures/`：图表 PNG
+- `output_funding_analysis/gephi/`：Gephi 点/边 CSV
+
+
+## 单独可视化重绘（图6/图7优化）
+
+如果你已经有 `metrics` 结果，可直接运行：
+
+```bash
+python metrics_visualization_refined.py   --metrics_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/metrics   --out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/figures_refined
+```
+
+该脚本会：
+- 基于 `metric_partner_year.csv` 重算 Top20，避免沿用旧 top20 文件里的异常项。
+- 对合作国家做别名归并（含 USA）并过滤明显噪声项（如 `wei/jing/yu` 等误识别词）。
+- 输出优化版图：`fig6_top20_partners_refined.png`、`fig7_partner_heatmap_refined.png`。
+
+
+## 全量美化重绘（基于现有 metrics）
+
+可直接对 `output_funding_analysis/metrics` 重绘全部图（不重跑原始数据处理）：
+
+```bash
+python all_visualizations_refined.py   --metrics_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/metrics   --out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/figures_beautified
+```
+
+输出：
+- 11 张美化图（`01_...png` 到 `11_...png`）
+- `cleaned_tables/partner_year_cleaned.csv` 与 `cleaned_tables/top20_cleaned.csv`（用于核查 USA 是否聚合、异常国家是否被过滤）
+
+
+## 重新统计美国合作次数并重绘图6/图7（修复邮编+USA地址）
+
+你发现的地址形式（如 `NJ 08544 USA`）非常关键。可运行下面脚本重新统计：
+
+```bash
+python recount_us_and_redraw_fig6_fig7.py   --file1 /data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv   --file2 /data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv   --out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/figures_recount   --metrics_out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/metrics_recount   --n_jobs 0
+```
+
+输出：
+- 图：`fig6_top20_partners_recount.png`、`fig7_partner_heatmap_recount.png`
+- 指标：`metric_partner_year_recount.csv`、`metric_top20_partners_recount.csv`
+- USA摘要：`usa_recount_summary.txt`
+
+并行说明：
+- `--n_jobs 0` = 自动使用 `CPU核数-1`，用于加速大规模地址解析。
+
+## Gephi 使用说明
+
+详见：`GEPHI_GUIDE.md`
+
+
+## 从“已重算数据”中排除姓氏噪声并重绘图6/图7
+
+如果你已经跑过 `recount_us_and_redraw_fig6_fig7.py`，可直接用：
+
+```bash
+python filter_recount_and_replot_fig6_fig7.py   --metrics_recount_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/metrics_recount   --out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/figures_recount_filtered
+```
+
+输出文件：
+- `fig6_top20_partners_recount_filtered.png`
+- `fig7_partner_heatmap_recount_filtered.png`
+- `metric_partner_year_recount_filtered.csv`
+- `metric_top20_partners_recount_filtered.csv`
+- `removed_partner_tokens.txt`（被剔除的异常国家token清单）
