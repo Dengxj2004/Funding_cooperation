@@ -68,18 +68,30 @@ def normalize_country(country_raw: str):
 
     china_aliases = {
         "peoples r china",
-        "peoples r china",
+        "people s r china",
         "peoples republic of china",
         "china",
         "hong kong",
         "hong kong sar",
+        "hong kong, china",
         "macau",
         "macao",
+        "macau, china",
+        "macao, china",
         "taiwan",
         "taiwan, china",
     }
+    usa_aliases = {
+        "usa",
+        "u s a",
+        "u.s.a",
+        "united states",
+        "united states of america",
+    }
     if c in china_aliases:
         return "peoples r china"
+    if c in usa_aliases:
+        return "usa"
     return c
 
 
@@ -131,7 +143,7 @@ def paper_id(row):
 
 
 def read_data(file_path: str):
-    df = pd.read_csv(file_path, sep="\t", dtype=str, low_memory=False)
+    df = pd.read_csv(file_path, sep=None, engine="python", dtype=str, low_memory=False)
     needed = [
         "grantno", "PT", "AU", "AF", "TI", "C1", "PY", "UT", "DI",
         "applyType", "fundOrg", "applyYear"
@@ -592,6 +604,92 @@ def draw_plots(df_paper, metrics, out_dir):
     save_plot(fig, out_dir, "fig13_apply_fund_compare.png")
 
 
+
+def _safe_name(x: str):
+    return re.sub(r"[^0-9a-zA-Z一-龥]+", "_", str(x)).strip("_")
+
+
+def export_gephi_files(df_paper: pd.DataFrame, out_dir: str):
+    gephi_dir = os.path.join(out_dir, "gephi")
+    os.makedirs(gephi_dir, exist_ok=True)
+
+    # 1) 国家网络（总体）
+    country_counter = Counter()
+    edge_counter = Counter()
+    for _, r in df_paper.iterrows():
+        countries = sorted(set(r["countries"]))
+        for c in countries:
+            country_counter[c] += 1
+        for a, b in combinations(countries, 2):
+            edge_counter[(a, b)] += 1
+
+    country_nodes = pd.DataFrame([
+        {"Id": c, "Label": c, "Type": "country", "PaperCount": n, "IsChina": int(c == "peoples r china")}
+        for c, n in country_counter.items()
+    ]).sort_values(["PaperCount", "Id"], ascending=[False, True])
+    country_edges = pd.DataFrame([
+        {"Source": a, "Target": b, "Weight": w, "Type": "Undirected"}
+        for (a, b), w in edge_counter.items()
+    ]).sort_values("Weight", ascending=False)
+
+    country_nodes.to_csv(os.path.join(gephi_dir, "country_nodes_overall.csv"), index=False, encoding="utf-8-sig")
+    country_edges.to_csv(os.path.join(gephi_dir, "country_edges_overall.csv"), index=False, encoding="utf-8-sig")
+
+    # 2) 中国-伙伴网络（总体）
+    cn_partner = Counter()
+    for _, r in df_paper.iterrows():
+        cs = set(r["countries"])
+        if "peoples r china" in cs:
+            for p in cs - {"peoples r china"}:
+                cn_partner[p] += 1
+    cp_nodes = [{"Id": "peoples r china", "Label": "peoples r china", "Type": "country", "IsChina": 1, "PaperCount": int(sum(cn_partner.values()))}]
+    cp_nodes += [{"Id": p, "Label": p, "Type": "country", "IsChina": 0, "PaperCount": int(w)} for p, w in cn_partner.items()]
+    cp_edges = [{"Source": "peoples r china", "Target": p, "Weight": int(w), "Type": "Undirected"} for p, w in cn_partner.items()]
+    pd.DataFrame(cp_nodes).to_csv(os.path.join(gephi_dir, "china_partner_nodes_overall.csv"), index=False, encoding="utf-8-sig")
+    pd.DataFrame(cp_edges).to_csv(os.path.join(gephi_dir, "china_partner_edges_overall.csv"), index=False, encoding="utf-8-sig")
+
+    # 3) 国家网络（分阶段）
+    for p, g in df_paper.groupby("period5"):
+        c_counter = Counter()
+        e_counter = Counter()
+        for _, r in g.iterrows():
+            countries = sorted(set(r["countries"]))
+            for c in countries:
+                c_counter[c] += 1
+            for a, b in combinations(countries, 2):
+                e_counter[(a, b)] += 1
+        ndf = pd.DataFrame([
+            {"Id": c, "Label": c, "Type": "country", "PaperCount": n, "IsChina": int(c == "peoples r china"), "Period": p}
+            for c, n in c_counter.items()
+        ])
+        edf = pd.DataFrame([
+            {"Source": a, "Target": b, "Weight": w, "Type": "Undirected", "Period": p}
+            for (a, b), w in e_counter.items()
+        ])
+        ndf.to_csv(os.path.join(gephi_dir, f"country_nodes_{_safe_name(p)}.csv"), index=False, encoding="utf-8-sig")
+        edf.to_csv(os.path.join(gephi_dir, f"country_edges_{_safe_name(p)}.csv"), index=False, encoding="utf-8-sig")
+
+    # 4) 机构网络（总体，可能较大）
+    inst_counter = Counter()
+    inst_edges = Counter()
+    for _, r in df_paper.iterrows():
+        insts = sorted(set(r["institutions"]))
+        for i in insts:
+            inst_counter[i] += 1
+        for a, b in combinations(insts, 2):
+            inst_edges[(a, b)] += 1
+    inst_nodes = pd.DataFrame([
+        {"Id": i, "Label": i, "Type": "institution", "PaperCount": n}
+        for i, n in inst_counter.items()
+    ]).sort_values("PaperCount", ascending=False)
+    inst_edges_df = pd.DataFrame([
+        {"Source": a, "Target": b, "Weight": w, "Type": "Undirected"}
+        for (a, b), w in inst_edges.items()
+    ]).sort_values("Weight", ascending=False)
+    inst_nodes.to_csv(os.path.join(gephi_dir, "institution_nodes_overall.csv"), index=False, encoding="utf-8-sig")
+    inst_edges_df.to_csv(os.path.join(gephi_dir, "institution_edges_overall.csv"), index=False, encoding="utf-8-sig")
+
+
 def main(args):
     setup_fonts(args.simsun, args.times)
 
@@ -608,8 +706,9 @@ def main(args):
 
     metrics = compute_metrics(paper_df, prep, os.path.join(args.out_dir, "metrics"))
     draw_plots(paper_df, metrics, os.path.join(args.out_dir, "figures"))
+    export_gephi_files(paper_df, args.out_dir)
 
-    print("完成：指标与图表已输出")
+    print("完成：指标、图表与Gephi网络文件已输出")
     print(f"输出目录：{args.out_dir}")
 
 

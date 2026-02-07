@@ -59,6 +59,68 @@ def save_plot(fig, out_dir, filename):
     plt.close(fig)
 
 
+
+
+def _safe_name(x: str):
+    import re
+    return re.sub(r"[^0-9a-zA-Z一-龥]+", "_", str(x)).strip("_")
+
+
+def export_gephi_files_from_checkpoint(paper_df: pd.DataFrame, out_dir: str):
+    gephi_dir = os.path.join(out_dir, "gephi")
+    os.makedirs(gephi_dir, exist_ok=True)
+
+    country_counter = Counter()
+    edge_counter = Counter()
+    for _, r in paper_df.iterrows():
+        countries = sorted(set(r["countries"]))
+        for c in countries:
+            country_counter[c] += 1
+        for a, b in combinations(countries, 2):
+            edge_counter[(a, b)] += 1
+
+    pd.DataFrame([
+        {"Id": c, "Label": c, "Type": "country", "PaperCount": n, "IsChina": int(c == "peoples r china")}
+        for c, n in country_counter.items()
+    ]).to_csv(os.path.join(gephi_dir, "country_nodes_overall.csv"), index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"Source": a, "Target": b, "Weight": w, "Type": "Undirected"}
+        for (a, b), w in edge_counter.items()
+    ]).to_csv(os.path.join(gephi_dir, "country_edges_overall.csv"), index=False, encoding="utf-8-sig")
+
+    cn_partner = Counter()
+    for _, r in paper_df.iterrows():
+        cs = set(r["countries"])
+        if "peoples r china" in cs:
+            for p in cs - {"peoples r china"}:
+                cn_partner[p] += 1
+    pd.DataFrame([
+        {"Id": "peoples r china", "Label": "peoples r china", "Type": "country", "IsChina": 1, "PaperCount": int(sum(cn_partner.values()))}
+    ] + [
+        {"Id": p, "Label": p, "Type": "country", "IsChina": 0, "PaperCount": int(w)} for p, w in cn_partner.items()
+    ]).to_csv(os.path.join(gephi_dir, "china_partner_nodes_overall.csv"), index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"Source": "peoples r china", "Target": p, "Weight": int(w), "Type": "Undirected"} for p, w in cn_partner.items()
+    ]).to_csv(os.path.join(gephi_dir, "china_partner_edges_overall.csv"), index=False, encoding="utf-8-sig")
+
+    for period, g in paper_df.groupby(paper_df["PY"].apply(period_5y)):
+        cc = Counter()
+        ec = Counter()
+        for _, r in g.iterrows():
+            countries = sorted(set(r["countries"]))
+            for c in countries:
+                cc[c] += 1
+            for a, b in combinations(countries, 2):
+                ec[(a, b)] += 1
+        pd.DataFrame([
+            {"Id": c, "Label": c, "Type": "country", "PaperCount": n, "IsChina": int(c == "peoples r china"), "Period": period}
+            for c, n in cc.items()
+        ]).to_csv(os.path.join(gephi_dir, f"country_nodes_{_safe_name(period)}.csv"), index=False, encoding="utf-8-sig")
+        pd.DataFrame([
+            {"Source": a, "Target": b, "Weight": w, "Type": "Undirected", "Period": period}
+            for (a, b), w in ec.items()
+        ]).to_csv(os.path.join(gephi_dir, f"country_edges_{_safe_name(period)}.csv"), index=False, encoding="utf-8-sig")
+
 def draw_from_checkpoint(paper_df: pd.DataFrame, metrics_dir: str, figure_dir: str):
     os.makedirs(figure_dir, exist_ok=True)
 
@@ -231,9 +293,11 @@ def main(args):
 
     paper_df = pd.read_pickle(paper_pkl)
     draw_from_checkpoint(paper_df, metrics_dir, figure_dir)
+    export_gephi_files_from_checkpoint(paper_df, output_dir)
 
-    print("断点续跑完成：已从中间文件生成图8-图13")
+    print("断点续跑完成：已从中间文件生成图8-图13，并导出Gephi点边文件")
     print(f"图表目录：{figure_dir}")
+    print(f"Gephi目录：{os.path.join(output_dir, 'gephi')}")
 
 
 if __name__ == "__main__":

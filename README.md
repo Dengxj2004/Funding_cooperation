@@ -77,3 +77,20 @@ python continue_plots_from_checkpoint.py --out_dir ./output_funding_analysis
 ```
 
 该脚本会从断点继续绘图（图8~图13），并在 `spring_layout` 不可用时自动降级为不依赖 `scipy` 的布局。
+
+
+## Gephi 网络导出
+
+脚本现在会额外导出可直接导入 Gephi 的点表/边表到 `output_funding_analysis/gephi/`，包括：
+
+- `country_nodes_overall.csv` / `country_edges_overall.csv`
+- `china_partner_nodes_overall.csv` / `china_partner_edges_overall.csv`
+- 分5年阶段的国家网络节点/边文件（如 `country_nodes_2001_2005.csv`）
+- `institution_nodes_overall.csv` / `institution_edges_overall.csv`（全机构网络，文件可能较大）
+
+断点续跑脚本 `continue_plots_from_checkpoint.py` 也会同步导出上述 Gephi 文件。
+
+## 本次修正
+
+- 读取输入文件改为**自动识别分隔符**（兼容 `.tsv` 和 `.csv`），避免 2022/2023 文件未被正确读取。
+- 国家标准化新增美国别名归并（`USA`、`United States` 等统一为 `usa`），用于修复 Top 国家中美国缺失问题。
