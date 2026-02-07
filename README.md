@@ -53,3 +53,24 @@ python all_visualizations_refined.py   --metrics_dir /data/student2601/WOS/WOS/0
 输出：
 - 11 张美化图（`01_...png` 到 `11_...png`）
 - `cleaned_tables/partner_year_cleaned.csv` 与 `cleaned_tables/top20_cleaned.csv`（用于核查 USA 是否聚合、异常国家是否被过滤）
+
+
+## 重新统计美国合作次数并重绘图6/图7（修复邮编+USA地址）
+
+你发现的地址形式（如 `NJ 08544 USA`）非常关键。可运行下面脚本重新统计：
+
+```bash
+python recount_us_and_redraw_fig6_fig7.py   --file1 /data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv   --file2 /data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv   --out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/figures_recount   --metrics_out_dir /data/student2601/WOS/WOS/0207/output_funding_analysis/metrics_recount   --n_jobs 0
+```
+
+输出：
+- 图：`fig6_top20_partners_recount.png`、`fig7_partner_heatmap_recount.png`
+- 指标：`metric_partner_year_recount.csv`、`metric_top20_partners_recount.csv`
+- USA摘要：`usa_recount_summary.txt`
+
+并行说明：
+- `--n_jobs 0` = 自动使用 `CPU核数-1`，用于加速大规模地址解析。
+
+## Gephi 使用说明
+
+详见：`GEPHI_GUIDE.md`
