@@ -1,96 +1,28 @@
-# Funding Cooperation 分析脚本
+# Funding Cooperation 分析脚本（全量重跑版）
 
-该仓库提供 `analysis_pipeline.py`，用于对以下两份大规模数据进行统一清洗、指标计算与图表输出：
+该版本不再使用断点续跑。
 
-- `/data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv`
-- `/data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv`
-
-## 功能覆盖
-
-脚本实现了你提出的核心任务，包括：
-
-- 跨国/跨机构合作数量与占比（总体、逐年）
-- 单机构/国内跨机构/国际合作结构
-- 合作国家广度
-- 按 `grantno` 的平均合作机构数、平均合作作者数
-- 中国合作 Top20 国家/地区
-- 中国与主要合作伙伴年度合作强度
-- 中国第一地址论文趋势
-- 中国牵引双边/多边合作及占比
-- 按项目类型、按学部的拆解指标
-- 图1~图13 对应可视化输出
-
-## 运行环境
-
-建议 Python 3.9+。
-
-安装依赖：
-
-```bash
-pip install pandas numpy matplotlib seaborn networkx
-```
-
-## 运行方式
+## 运行
 
 ```bash
 python analysis_pipeline.py \
   --file1 /data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv \
   --file2 /data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv \
   --out_dir ./output_funding_analysis \
-  --simsun /data/student2601/WOS/SimSun.ttf \
-  --times "/data/student2601/WOS/Times New Roman.ttf"
+  --n_jobs 0
 ```
+
+- `--n_jobs 0` 表示自动使用 `CPU核数-1` 并行处理地址/作者解析，以加速大文件运行。
+
+## 本次关键修正
+
+- **全量重跑**：不再依赖中间断点文件。
+- **双文件合并**：自动识别分隔符，兼容 `.tsv` + `.csv`，确保 2022/2023 数据并入。
+- **美国归并**：`USA / United States / U.S.A` 等归并为 `usa`，避免 Top 国家漏计。
+- **Gephi 导出**：输出国家网络与机构网络点边表至 `output_funding_analysis/gephi/`。
 
 ## 输出目录
 
-- `output_funding_analysis/metrics/`：各指标结果 CSV
-- `output_funding_analysis/figures/`：图1~图13 PNG
-- `output_funding_analysis/intermediate_*.pkl`：中间表（行级、论文级）
-
-## 关键口径说明
-
-- **国家/地区识别**：地址字段 `C1` 中每个地址最后一个逗号后的字符串视为国家/地区。
-- **中国归并规则**：`Hong Kong`、`Macau/Macao`、`Taiwan` 统一归并为 `peoples r china`（小写标准化后处理）。
-- **逐年统计起点**：1995 年。
-- **五年分段**：
-  - 2000年以前
-  - 2001-2005
-  - 2006-2010
-  - 2011-2015
-  - 2016-2020
-  - 2021-2025
-- **机构识别**：地址中第一个逗号前字符串。
-- **中国第一地址**：仅看地址列表中的第一个地址是否属于中国。
-
-
-## 断点续跑（仅补画图8-图13）
-
-如果 `analysis_pipeline.py` 已经生成了：
-
-- `output_funding_analysis/intermediate_paper_level.pkl`
-- `output_funding_analysis/metrics/*.csv`
-
-但在网络图阶段因 `scipy` 缺失报错，可直接运行：
-
-```bash
-python continue_plots_from_checkpoint.py --out_dir ./output_funding_analysis
-```
-
-该脚本会从断点继续绘图（图8~图13），并在 `spring_layout` 不可用时自动降级为不依赖 `scipy` 的布局。
-
-
-## Gephi 网络导出
-
-脚本现在会额外导出可直接导入 Gephi 的点表/边表到 `output_funding_analysis/gephi/`，包括：
-
-- `country_nodes_overall.csv` / `country_edges_overall.csv`
-- `china_partner_nodes_overall.csv` / `china_partner_edges_overall.csv`
-- 分5年阶段的国家网络节点/边文件（如 `country_nodes_2001_2005.csv`）
-- `institution_nodes_overall.csv` / `institution_edges_overall.csv`（全机构网络，文件可能较大）
-
-断点续跑脚本 `continue_plots_from_checkpoint.py` 也会同步导出上述 Gephi 文件。
-
-## 本次修正
-
-- 读取输入文件改为**自动识别分隔符**（兼容 `.tsv` 和 `.csv`），避免 2022/2023 文件未被正确读取。
-- 国家标准化新增美国别名归并（`USA`、`United States` 等统一为 `usa`），用于修复 Top 国家中美国缺失问题。
+- `output_funding_analysis/metrics/`：指标 CSV
+- `output_funding_analysis/figures/`：图表 PNG
+- `output_funding_analysis/gephi/`：Gephi 点/边 CSV
