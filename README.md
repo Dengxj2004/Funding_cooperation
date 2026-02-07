@@ -62,3 +62,18 @@ python analysis_pipeline.py \
 - **机构识别**：地址中第一个逗号前字符串。
 - **中国第一地址**：仅看地址列表中的第一个地址是否属于中国。
 
+
+## 断点续跑（仅补画图8-图13）
+
+如果 `analysis_pipeline.py` 已经生成了：
+
+- `output_funding_analysis/intermediate_paper_level.pkl`
+- `output_funding_analysis/metrics/*.csv`
+
+但在网络图阶段因 `scipy` 缺失报错，可直接运行：
+
+```bash
+python continue_plots_from_checkpoint.py --out_dir ./output_funding_analysis
+```
+
+该脚本会从断点继续绘图（图8~图13），并在 `spring_layout` 不可用时自动降级为不依赖 `scipy` 的布局。
