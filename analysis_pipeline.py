@@ -58,7 +58,7 @@ def normalize_country(country_raw: str):
     if c in china_aliases:
         return "peoples r china"
     if c in usa_aliases:
-        return "usa"
+        return "united states"
     return c
 
 
