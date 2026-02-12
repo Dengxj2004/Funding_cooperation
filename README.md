@@ -71,6 +71,42 @@ python recount_us_and_redraw_fig6_fig7.py   --file1 /data/student2601/WOS/WOS/Fu
 并行说明：
 - `--n_jobs 0` = 自动使用 `CPU核数-1`，用于加速大规模地址解析。
 
+## 核心-边缘结构演化（并行优化 + 高质量可视化）
+
+如果你要直接回答“是否由少数核心机构向更均衡网络演进”，可运行：
+
+```bash
+python core_periphery_analysis_optimized.py \
+  --file1 /data/student2601/WOS/WOS/Funding/merged_paper_info_with_details_full.tsv \
+  --file2 /data/student2601/WOS/WOS/Funding/2022merged_paper_info_new_unique.csv \
+  --out_dir ./output_core_periphery \
+  --n_jobs 0
+```
+
+输出：
+- `core_periphery_metrics.csv`：按“逐年/分期”的核心-边缘指标（HHI、Gini、CR5、核层占比、LCC占比等）
+- `edge_weight_distribution.csv`：各阶段边权分布数据
+- `top_institutions_by_time.csv`：各阶段核心机构指标（degree/strength/betweenness）
+- `core_periphery_dashboard.png`：4联图总览
+- `core_periphery_metrics_heatmap.png`：多指标标准化热力图
+- `core_periphery_bubble_tradeoff.png`：密度-集中度权衡气泡图
+- `core_periphery_edgeweight_violin.png`：边权分布小提琴图
+- `core_periphery_top_institutions_latest.png`：最新阶段Top机构横向条形图
+- `core_periphery_top_institutions_stream.png`：Top机构强度堆叠演化图
+- `quality_check.txt`：缺失值与过滤说明
+
+如果你已经生成好上述指标，不想再次读取原始大文件，可直接：
+
+```bash
+python vis_core_periphery_from_metrics.py \
+  --metrics_dir ./output_core_periphery \
+  --out_dir ./output_core_periphery/figures_from_metrics
+```
+
+该脚本仅基于 `core_periphery_metrics.csv`（以及存在时的 `edge_weight_distribution.csv`、`top_institutions_by_time.csv`）重绘图片，并采用更稳健的中文字体回退链（`SimSun/SimHei/Microsoft YaHei/DejaVu Sans`）以减少中文缺字告警。
+
+注：如果年份较多导致横轴拥挤，新版脚本已内置“自动抽稀时间刻度 + 旋转标签（35°）+ 右对齐”策略，无需手动改图。
+
 ## Gephi 使用说明
 
 详见：`GEPHI_GUIDE.md`
