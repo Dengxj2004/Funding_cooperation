@@ -280,6 +280,20 @@ def _style_axis(ax, title: str, xlabel: str, ylabel: str):
     ax.grid(alpha=0.25, linestyle="--", linewidth=0.8)
 
 
+def format_time_ticks(ax, labels, max_ticks: int = 10, rotation: int = 35):
+    labels = [str(x) for x in labels]
+    n = len(labels)
+    if n == 0:
+        return
+    step = max(1, (n + max_ticks - 1) // max_ticks)
+    tick_pos = list(range(0, n, step))
+    if tick_pos[-1] != n - 1:
+        tick_pos.append(n - 1)
+    ax.set_xticks(tick_pos)
+    ax.set_xticklabels([labels[i] for i in tick_pos], rotation=rotation, ha="right")
+    ax.margins(x=0.02)
+
+
 def plot_dashboard(metrics_df: pd.DataFrame, time_col: str, out_path: str):
     sns.set_theme(style="whitegrid", context="talk")
     x = metrics_df[time_col].astype(str)
@@ -290,17 +304,20 @@ def plot_dashboard(metrics_df: pd.DataFrame, time_col: str, out_path: str):
     axes[0, 0].plot(x, metrics_df["hhi_strength"], marker="s", linewidth=2.2, color=BLUE_GRADIENT[1], label="HHI(强度)")
     _style_axis(axes[0, 0], "集中度（HHI）", "时间", "指数")
     axes[0, 0].legend(frameon=False)
+    format_time_ticks(axes[0, 0], x, max_ticks=10)
 
     axes[0, 1].plot(x, metrics_df["gini_degree"], marker="o", linewidth=2.8, color=GREEN_GRADIENT[2], label="Gini(度)")
     axes[0, 1].plot(x, metrics_df["gini_strength"], marker="s", linewidth=2.2, color=GREEN_GRADIENT[1], label="Gini(强度)")
     axes[0, 1].plot(x, metrics_df["cr5_degree"], marker="^", linewidth=2.0, color=BLUE_GRADIENT[0], label="CR5(度)")
     _style_axis(axes[0, 1], "不平等与头部占比", "时间", "比例")
     axes[0, 1].legend(frameon=False)
+    format_time_ticks(axes[0, 1], x, max_ticks=10)
 
     axes[1, 0].bar(x, metrics_df["core_ratio"], color=sns.color_palette(BLUE_GRADIENT, len(x)))
     axes[1, 0].plot(x, metrics_df["lcc_ratio"], marker="D", linewidth=2.0, color=GREEN_GRADIENT[2], label="LCC占比")
     _style_axis(axes[1, 0], "核心占比与连通性", "时间", "比例")
     axes[1, 0].legend(frameon=False)
+    format_time_ticks(axes[1, 0], x, max_ticks=10)
 
     axes[1, 1].plot(x, metrics_df["nodes"], marker="o", linewidth=2.8, color=BLUE_GRADIENT[2], label="节点数")
     axes[1, 1].plot(x, metrics_df["edges"], marker="s", linewidth=2.8, color=GREEN_GRADIENT[2], label="边数")
@@ -311,6 +328,7 @@ def plot_dashboard(metrics_df: pd.DataFrame, time_col: str, out_path: str):
     axes[1, 1].set_ylabel("规模", fontsize=12)
     ax2.set_ylabel("密度", fontsize=12)
     axes[1, 1].grid(alpha=0.25, linestyle="--", linewidth=0.8)
+    format_time_ticks(axes[1, 1], x, max_ticks=10)
     lines1, labels1 = axes[1, 1].get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     axes[1, 1].legend(lines1 + lines2, labels1 + labels2, frameon=False, loc="upper left")
@@ -329,6 +347,7 @@ def plot_metric_heatmap(metrics_df: pd.DataFrame, time_col: str, out_path: str):
     sns.heatmap(hm.T, cmap=sns.blend_palette([GREEN_GRADIENT[0], "#f8fbff", BLUE_GRADIENT[2]], as_cmap=True), linewidths=0.3, linecolor="white", ax=ax)
     ax.set_title("多指标标准化热力图（按时间）", fontsize=16)
     ax.set_xlabel("时间")
+    format_time_ticks(ax, hm.columns.tolist(), max_ticks=10)
     ax.set_ylabel("指标")
     fig.tight_layout()
     fig.savefig(out_path, dpi=350)
@@ -364,6 +383,9 @@ def plot_edge_weight_violin(edge_weight_df: pd.DataFrame, time_col: str, out_pat
     fig, ax = plt.subplots(figsize=(12, 7))
     sns.violinplot(data=edge_weight_df, x=time_col, y="weight", palette=sns.color_palette(BLUE_GRADIENT, n_colors=max(3, edge_weight_df[time_col].nunique())), inner="quartile", cut=0, ax=ax)
     _style_axis(ax, "合作强度（边权）分布演化", "时间", "边权（共同出现次数）")
+    for label in ax.get_xticklabels():
+        label.set_rotation(35)
+        label.set_ha("right")
     fig.tight_layout()
     fig.savefig(out_path, dpi=350)
     plt.close(fig)
@@ -396,6 +418,9 @@ def plot_top_institution_stream(top_inst_df: pd.DataFrame, time_col: str, out_pa
     ax.stackplot(pv.index.astype(str), [pv[c].values for c in pv.columns], labels=pv.columns, colors=colors, alpha=0.85)
     _style_axis(ax, "头部机构合作强度堆叠演化（Top8）", "时间", "合作强度")
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False, fontsize=9)
+    for label in ax.get_xticklabels():
+        label.set_rotation(35)
+        label.set_ha("right")
     fig.tight_layout()
     fig.savefig(out_path, dpi=350, bbox_inches="tight")
     plt.close(fig)

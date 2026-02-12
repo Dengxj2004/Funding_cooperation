@@ -95,6 +95,18 @@ python core_periphery_analysis_optimized.py \
 - `core_periphery_top_institutions_stream.png`：Top机构强度堆叠演化图
 - `quality_check.txt`：缺失值与过滤说明
 
+如果你已经生成好上述指标，不想再次读取原始大文件，可直接：
+
+```bash
+python vis_core_periphery_from_metrics.py \
+  --metrics_dir ./output_core_periphery \
+  --out_dir ./output_core_periphery/figures_from_metrics
+```
+
+该脚本仅基于 `core_periphery_metrics.csv`（以及存在时的 `edge_weight_distribution.csv`、`top_institutions_by_time.csv`）重绘图片，并采用更稳健的中文字体回退链（`SimSun/SimHei/Microsoft YaHei/DejaVu Sans`）以减少中文缺字告警。
+
+注：如果年份较多导致横轴拥挤，新版脚本已内置“自动抽稀时间刻度 + 旋转标签（35°）+ 右对齐”策略，无需手动改图。
+
 ## Gephi 使用说明
 
 详见：`GEPHI_GUIDE.md`
